@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="uk">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>НХНЛ Графік проміру дна</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <style>
+        :root {
+            --main-blue: #0077cc;
+            --dark-blue: #005fa3;
+            --light-blue: #e6f7ff;
+            --sand: #f4e2b8;
+            --water: rgba(173, 216, 230, 0.5);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: url('https://www.transparenttextures.com/patterns/waves.png'),
+                linear-gradient(to bottom, #b3e0f7, #e6f7ff);
+            background-repeat: repeat;
+            background-size: auto;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            width: 100%;
+            max-width: 850px;
+        }
+
+        .logo {
+            display: block;
+            margin: 0 auto 1rem;
+            width: 80px;
+            height: auto;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--dark-blue);
+            margin-bottom: 1rem;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+
+        input,
+        button {
+            padding: 0.75rem;
+            font-size: 1rem;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        input {
+            width: 140px;
+        }
+
+        button {
+            border: none;
+            background: linear-gradient(to bottom right, var(--main-blue), var(--dark-blue));
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: linear-gradient(to bottom right, #005fa3, #003f7f);
+        }
+
+        canvas {
+            border-radius: 1rem;
+            border: 2px solid var(--main-blue);
+            max-width: 100%;
+            width: 100%;
+            height: auto;
+            display: block;
+            margin: 0 auto 1rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .reset-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 1.5rem;
+        }
+
+        @media (max-width: 600px) {
+
+            input,
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <img src="fish_clear.svg" alt="Fish Logo" class="logo" />
+        <h1>Графік проміру дна</h1>
+        <form id="castForm">
+            <input type="number" id="distance" placeholder="Дистанція (м)" required min="0" step="0.5"
+                list="distanceOptions">
+            <datalist id="distanceOptions">
+                <option value="100">
+                <option value="75">
+                <option value="60">
+                <option value="50">
+                <option value="45">
+                <option value="40">
+                <option value="35">
+                <option value="30">
+                <option value="25">
+            </datalist>
+
+            <input type="number" id="sinkTime" placeholder="Час падіння (с)" required min="0" step="0.5"
+                list="timeOptions">
+            <datalist id="timeOptions">
+                <option value="10">
+                <option value="9">
+                <option value="8">
+                <option value="7">
+                <option value="6">
+                <option value="5">
+                <option value="4">
+                <option value="3">
+            </datalist>
+            <button type="submit">➕ Додати точку</button>
+            <button type="button" id="undoBtn">➖ Відмінити останню точку</button>
+        </form>
+        <canvas id="lakeCanvas" width="800" height="400"></canvas>
+        <div class="reset-container">
+            <button type="button" id="resetBtn">♻️ Скинути графік</button>
+        </div>
+    </div>
+
+    <script>
+        const SINK_RATE = 1;
+
+        const form = document.getElementById('castForm');
+        const canvas = document.getElementById('lakeCanvas');
+        const ctx = canvas.getContext('2d');
+        const resetBtn = document.getElementById('resetBtn');
+        const undoBtn = document.getElementById('undoBtn');
+
+        let points = [];
+
+        function drawMessage() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.font = "20px Segoe UI";
+            ctx.fillStyle = "#555";
+            ctx.textAlign = "center";
+            ctx.fillText("🎣 Будь ласка введіть дані для створення графіку проміру дна", canvas.width / 2, canvas.height / 2);
+        }
+
+        function drawAxes(maxX, maxY, padding) {
+            const ticks = 5;
+            ctx.fillStyle = '#333';
+            ctx.font = '12px Segoe UI';
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            for (let i = 0; i <= ticks; i++) {
+                const y = padding + (i / ticks) * (canvas.height - 2 * padding);
+                const value = Math.round((i / ticks) * maxY);
+                ctx.fillText(`${value}s`, canvas.width - 8, y);
+            }
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            for (let i = 0; i <= ticks; i++) {
+                const x = padding + (i / ticks) * (canvas.width - 2 * padding);
+                const value = Math.round((1 - i / ticks) * maxX);
+                ctx.fillText(`${value}m`, x, canvas.height - padding + 6);
+            }
+        }
+
+        function drawGraph() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (points.length === 0) return drawMessage();
+
+            const padding = 40;
+            const graphWidth = canvas.width - padding * 2;
+            const graphHeight = canvas.height - padding * 2;
+
+            const maxX = Math.max(...points.map(p => p.distance));
+            const maxY = Math.max(...points.map(p => p.depth));
+
+            const screenPoints = points.map(p => ({
+                x: padding + ((1 - p.distance / maxX) * graphWidth),
+                y: padding + (p.depth / maxY) * graphHeight
+            }));
+
+            const first = screenPoints[0];
+            const last = screenPoints[screenPoints.length - 1];
+
+            ctx.beginPath();
+            ctx.moveTo(first.x, first.y);
+            for (const pt of screenPoints) ctx.lineTo(pt.x, pt.y);
+            ctx.lineTo(last.x, canvas.height - padding);
+            ctx.lineTo(first.x, canvas.height - padding);
+            ctx.closePath();
+            ctx.fillStyle = '#f4e2b8';
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(first.x, padding);
+            for (const pt of screenPoints) ctx.lineTo(pt.x, pt.y);
+            ctx.lineTo(last.x, padding);
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(173, 216, 230, 0.5)';
+            ctx.fill();
+
+            if (screenPoints.length === 1) {
+                ctx.beginPath();
+                ctx.arc(screenPoints[0].x, screenPoints[0].y, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = '#0077cc';
+                ctx.fill();
+            } else {
+                ctx.beginPath();
+                ctx.moveTo(screenPoints[0].x, screenPoints[0].y);
+                for (const pt of screenPoints) ctx.lineTo(pt.x, pt.y);
+                ctx.strokeStyle = '#0077cc';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+            }
+            drawAxes(maxX, maxY, padding);
+        }
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const distance = parseFloat(document.getElementById('distance').value);
+            const time = parseFloat(document.getElementById('sinkTime').value);
+            const depth = time * SINK_RATE;
+
+            if (!isNaN(distance) && !isNaN(time)) {
+                points.push({ distance, depth });
+                points.sort((a, b) => b.distance - a.distance);
+                drawGraph();
+                form.reset();
+            }
+        });
+
+        resetBtn.addEventListener('click', () => {
+            points = [];
+            drawMessage();
+        });
+
+        undoBtn.addEventListener('click', () => {
+            points.pop();
+            drawGraph();
+        });
+
+        drawMessage();
+    </script>
+</body>
+
+</html>
