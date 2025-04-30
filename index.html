@@ -119,7 +119,7 @@
         <img src="fish_clear.svg" alt="Fish Logo" class="logo" />
         <h1>Графік проміру дна</h1>
         <form id="castForm">
-            <input type="number" id="distance" placeholder="Дистанція (м)" required min="0" step="0.5"
+            <input type="number" id="distance" placeholder="Дистанція (м)" required min="0" step="1"
                 list="distanceOptions">
             <datalist id="distanceOptions">
                 <option value="100">
@@ -132,9 +132,10 @@
                 <option value="30">
                 <option value="25">
                 <option value="20">
+                <option value="15">
             </datalist>
 
-            <input type="number" id="sinkTime" placeholder="Час падіння (с)" required min="0" step="0.5"
+            <input type="number" id="sinkTime" placeholder="Час до дна (с)" required min="0" step="0.5"
                 list="timeOptions">
             <datalist id="timeOptions">
                 <option value="10">
@@ -148,7 +149,7 @@
                 <option value="2">
             </datalist>
             <button type="submit">➕ Додати точку</button>
-            <button type="button" id="undoBtn">➖ Відмінити точку</button>
+            <button type="button" id="undoBtn">➖ Відмінити останню точку</button>
         </form>
         <canvas id="lakeCanvas" width="800" height="400"></canvas>
         <div class="reset-container">
